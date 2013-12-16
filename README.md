@@ -1,7 +1,7 @@
 Rest-Utility
 ============
 
-# C# Wrapper for Accessing a Magentrix Portal
+## C# Wrapper for Accessing a Magentrix Portal
 
 This C# wrapper is used for accessing a Magentrix Portal from an external source. With it you can query, insert, update, and delete objects from the portal. 
 
@@ -9,7 +9,7 @@ The RESTUtility class contains everything you need to access the Magentrix Porta
 
 The sample.cs (along with the Account.cs) is an example that hows you to successfully connect with the Magentrix Portal.
 
-# Overview
+## Overview
 
 ### Authenticate
 
@@ -50,7 +50,7 @@ Connecting to the portal is very simple. In order to authenticate, you provide t
 
 ```csharp
 
-REST api = new REST(@'https://example.magentrix.com', @'username@example.com', 'password');
+REST api = new REST(@"https://example.magentrix.com", @"username@example.com", "password");
 
 if(api.Login(true).Success)
 {
