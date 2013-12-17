@@ -1,0 +1,7 @@
+C:\Users\Seper\Desktop\sample\bin\Debug\ExternalFileService.exe
+C:\Users\Seper\Desktop\sample\bin\Debug\ExternalFileService.pdb
+C:\Users\Seper\Desktop\sample\bin\Debug\Newtonsoft.Json.dll
+C:\Users\Seper\Desktop\sample\bin\Debug\Newtonsoft.Json.xml
+C:\Users\Seper\Desktop\sample\obj\x86\Debug\REST.csprojResolveAssemblyReference.cache
+C:\Users\Seper\Desktop\sample\obj\x86\Debug\ExternalFileService.exe
+C:\Users\Seper\Desktop\sample\obj\x86\Debug\ExternalFileService.pdb

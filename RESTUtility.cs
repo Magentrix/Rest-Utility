@@ -1,22 +1,22 @@
-﻿namespace Sample
+﻿namespace Magentrix
 {
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Net;
-    using System.Runtime.Serialization;
-    using System.Runtime.Serialization.Json;
     using System.Text;
 
     public class RESTUtility
     {
         //Perform an HTTP Get.
-        public static string HttpGet(string uri, ref CookieContainer cookie)
+        protected static string HttpGet(string uri, string authorization)
         {
             string response = null;
-            if (cookie == null) cookie = new CookieContainer();
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(uri);
-            httpWebRequest.CookieContainer = cookie;
+            if (!string.IsNullOrEmpty(authorization))
+            {
+                httpWebRequest.Headers.Add("Authorization", authorization);
+            }
             httpWebRequest.Method = "GET";
             httpWebRequest.ContentType = "text/xml; encoding='utf-8'";
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
@@ -29,13 +29,15 @@
         }
 
         //Perform an HTTP Post.
-        public static string HttpPost(string uri, string parameters, CookieContainer cookie)
+        protected static string HttpPost(string uri, string parameters, string authorization)
         {
-            // parameters: name1=value1&name2=value2	
             string response = "";
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(uri);
-            httpWebRequest.CookieContainer = cookie;
             httpWebRequest.ContentType = "application/x-www-form-urlencoded";
+            if (!string.IsNullOrEmpty(authorization))
+            {
+                httpWebRequest.Headers.Add("Authorization", authorization);
+            }
             httpWebRequest.Method = "POST";
             byte[] bytes = Encoding.ASCII.GetBytes(parameters);
             httpWebRequest.ContentLength = bytes.Length;
@@ -50,94 +52,150 @@
         }
     }
 
-    [DataContract]
     public class LoginResult
     {
-        [DataMember]
-        public bool Success { get; set; }
+        public LoginResult()
+        {
+            IsSuccess = false;
+            Errors = new List<Error>();
+        }
 
-        [DataMember]
-        public string Result { get; set; }
+        public bool IsSuccess { get; set; }
 
-        public Exception Exception { get; set; }
+        public string SessionId { get; set; }
+
+        public DateTime? DateIssued { get; set; }
+
+        public List<Error> Errors { get; set; }
+
+        public void AddError(string message)
+        {
+            Errors.Add(new Error { Message=message });
+         }
     }
 
-    [DataContract]
     public class QueryResult<T>
     {
-        [DataMember]
         public List<T> Records { get; set; }
 
-        [DataMember]
         public long Count { get; set; }
 
         public Exception Exception { get; set; }
     }
 
-    [DataContract]
     public class SaveResult
     {
-        [DataMember]
         public List<Error> Errors { get; set; }
-        [DataMember]
+
         public string Id { get; set; }
 
-        [DataMember]
         public bool HasError { get; set; }
 
         public Exception Exception { get; set; }
     }
 
-    [DataContract]
     public class DeleteResult
     {
-        [DataMember]
         public List<Error> Errors { get; set; }
-        [DataMember]
+
         public string Id { get; set; }
 
-        [DataMember]
         public bool HasError { get; set; }
 
         public Exception Exception { get; set; }
     }
 
-    [DataContract]
     public class Error
     {
-        [DataMember]
         public string Code { get; set; }
 
-        [DataMember]
         public string PropertyName { get; set; }
         
-        [DataMember]
         public string Message { get; set; }
 
-        [DataMember]
         public int Index { get; set; }
     }
 
     public class REST : RESTUtility
     {
-        CookieContainer _cookie = null;
-        bool _isLoggedin = false;
         string _uri = "";
         string _username = "";
         string _password = "";
+        string _AuthToken = "";
+        DateTime? _sessionIssued = null;
+        string _version = "";
+
+        public string SessionId
+        {
+            get
+            {
+                return _AuthToken;
+            }
+            set
+            {
+                _AuthToken = value;
+            }
+        }
+
+        public DateTime? SessionIssueDate
+        {
+            get
+            {
+                return _sessionIssued;
+            }
+            set
+            {
+                _sessionIssued = value;
+            }
+        }
+
+        public string Version
+        {
+            get
+            {
+                return _version;
+            }
+            set
+            {
+                _version = value;
+            }
+        }
+
+        private string VersionPath
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(_version))
+                    return "";
+                else
+                    return _version + "/";
+            }
+        }
 
         /// <summary>
         /// Creates instance of Magentrix REST Wrapper API
         /// </summary>
-        /// <param name="uri">URL to the Magentrix site.</param>
+        /// <param name="uri">URL to the Magentrix instance.</param>
         /// <param name="username">Username REST API should use authenticate</param>
         /// <param name="password">Password REST API should use authenticate</param>
-        public REST(string uri, string username, string password)
+        public REST(string uri)
         {
             if (string.IsNullOrEmpty("uri")) return;
             _uri = uri.EndsWith("/") ? uri : uri + "/";
-            _username = username;
-            _password = password;
+
+        }
+
+        /// <summary>
+        /// Creates instance of Magentrix REST Wrapper API
+        /// </summary>
+        /// <param name="uri">URL to the Magentrix instance.</param>
+        /// <param name="username">Username REST API should use authenticate</param>
+        /// <param name="password">Password REST API should use authenticate</param>
+        public REST(string uri, string version)
+        {
+            if (string.IsNullOrEmpty("uri")) return;
+            _uri = uri.EndsWith("/") ? uri : uri + "/";
+            _version = version;
         }
 
         /// <summary>
@@ -145,18 +203,26 @@
         /// </summary>
         /// <param name="logActivity">If true, this login will be recoded in Login History for the the authenticated user.  If false, login will not be recorded in Login History of the user.</param>
         /// <returns>Returns the Login Result object.  If login is successful, LoginResult.Success will be set to true, otherwise, it will be false.</returns>
-        public LoginResult Login(bool logActivity = true)
+        public LoginResult Login(string username, string password)
         {
             try
             {
-                string url = string.Format("{0}User/restlogin?un={1}&pw={2}{3}", _uri, Uri.EscapeDataString(_username), Uri.EscapeDataString(_password), logActivity ? "" : "&logmode=off");
-                LoginResult result = Deserialize<LoginResult>(HttpGet(url, ref _cookie));
-                if (result.Success) _isLoggedin = true;
+                _username = username;
+                _password = password;
+                string url = string.Format("{0}rest/{1}login?un={2}&pw={3}", _uri, VersionPath, Uri.EscapeDataString(_username), Uri.EscapeDataString(_password));
+                LoginResult result = Deserialize<LoginResult>(HttpGet(url, null));
+                if (result.IsSuccess || !string.IsNullOrEmpty(result.SessionId))
+                {
+                    _AuthToken = result.SessionId;
+                    _sessionIssued = result.DateIssued;
+                }
                 return result;
             }
             catch (Exception ex)
             {
-                return new LoginResult { Exception = ex };
+                var result = new LoginResult();
+                result.AddError(ex.Message);
+                return result;
             }
         }
         
@@ -171,8 +237,8 @@
         {
             try
             {
-                string url = string.Format("{0}REST/Query?q={1}", _uri, Uri.EscapeDataString(query));
-                return Deserialize<QueryResult<T>>(HttpGet(url, ref _cookie));
+                string url = string.Format("{0}REST/{1}Query?q={2}", _uri, VersionPath, Uri.EscapeDataString(query));
+                return Deserialize<QueryResult<T>>(HttpGet(url, _AuthToken));
             }
             catch (Exception ex)
             {
@@ -190,14 +256,15 @@
         {
             try
             {
-                string url = string.Format("{0}REST/Delete?id={1}&permanent={2}", _uri, id, permanent);
-                return Deserialize<DeleteResult>(HttpGet(url, ref _cookie));
+                string url = string.Format("{0}REST/{1}Delete?id={2}&permanent={3}", _uri, VersionPath, id, permanent);
+                return Deserialize<DeleteResult>(HttpGet(url, _AuthToken));
             }
             catch (Exception ex)
             {
                 return new DeleteResult { Exception = ex };
             }
         }
+        
         /// <summary>
         /// Creates a new record For a given Entity
         /// </summary>
@@ -208,9 +275,9 @@
         {
             try
             {
-                string url = string.Format("{0}REST/Create", _uri);
+                string url = string.Format("{0}REST/{1}Create", _uri, VersionPath);
                 string param = string.Format("e={0}&data={1}", typeof(T).Name, Serialize<T>(model));
-                return Deserialize<SaveResult>(HttpPost(url, param, _cookie));
+                return Deserialize<SaveResult>(HttpPost(url, param, _AuthToken));
             }
             catch (Exception ex)
             {
@@ -228,45 +295,38 @@
         {
             try
             {
-                string url = string.Format("{0}REST/Edit", _uri);
+                string url = string.Format("{0}REST/Edit{1}", _uri, VersionPath);
                 string param = string.Format("e={0}&data={1}", typeof(T).Name, Serialize<T>(model));
-                return Deserialize<SaveResult>(HttpPost(url, param, _cookie));
+                return Deserialize<SaveResult>(HttpPost(url, param, _AuthToken));
             }
             catch (Exception ex)
             {
                 return new SaveResult { Exception = ex };
             }
         }
-        public string Post(string action, string parameters)
+        
+        private string Post(string action, string parameters)
         {
             string post = string.Format("{0}{1}", _uri, action);
-            return HttpPost(post, parameters, _cookie);
+            return HttpPost(post, parameters, _AuthToken);
         }
-        public string Get(string action)
+
+        private string Get(string action)
         {
             string get = string.Format("{0}{1}", _uri, action);
-            return HttpGet(get, ref _cookie);
+            return HttpGet(get, _AuthToken);
         }
-        public static T Deserialize<T>(string response)
+
+        protected static T Deserialize<T>(string response)
         {
             if (string.IsNullOrEmpty(response)) return Activator.CreateInstance<T>();
-            using (MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(response)))
-            {
-                DataContractJsonSerializer sz = new DataContractJsonSerializer(typeof(T));
-                T result = (T)sz.ReadObject(ms);
-                return result;
-            }
+            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(response);
         }
-        public static string Serialize<T>(T model) where T : class
+
+        protected static string Serialize<T>(T model) where T : class
         {
             if (model == null) return null;
-            using (MemoryStream ms = new MemoryStream())
-            {
-                DataContractJsonSerializer sz = new DataContractJsonSerializer(typeof(T));
-                sz.WriteObject(ms, model);
-                ms.Position = 0;
-                using (StreamReader sr = new StreamReader(ms)) return sr.ReadToEnd();
-            }
+            return Newtonsoft.Json.JsonConvert.SerializeObject(model);
         }
     }
 }
