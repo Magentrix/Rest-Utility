@@ -12,7 +12,17 @@ The sample.cs (along with the Account.cs) is an example that hows you to success
 ## Overview
 
 ### Authenticate
+To Authenticate, create a new REST object and then call the login method
 
+```csharp
+
+//Create new instance of REST class
+REST api = new REST(@"https://yourcompany.magentrix.com");
+
+//Perform the login.
+var loginResult = api.Login(@"username@example.com", "password");
+
+```
 
 ### Query
 To Query an object, you must supply the type and the query. It will return a QueryResult objetc.
