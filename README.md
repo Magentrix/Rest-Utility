@@ -3,7 +3,7 @@ Rest-Utility
 
 ## C# Wrapper for Accessing the Magentrix Platform
 
-This C# wrapper is used for accessing Magentrix platform APIs. With it you can query, insert, update, and delete objects from the portal. 
+This C# wrapper is used for accessing Magentrix platform APIs. With it you can query, insert, update, and delete objects from the platform. 
 
 The RESTUtility class contains everything you need to access the Magentrix platform. 
 
