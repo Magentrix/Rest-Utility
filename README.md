@@ -7,7 +7,7 @@ This C# wrapper is used for accessing a Magentrix Portal from an external source
 
 The RESTUtility class contains everything you need to access the Magentrix Portal. 
 
-The sample.cs (along with the Account.cs) is an example that hows you to successfully connect with the Magentrix Portal.
+The sample.cs (along with the User.cs) is an example that shows you to successfully connect with the Magentrix Portal.
 
 ## Overview
 
@@ -25,7 +25,7 @@ var loginResult = api.Login(@"username@example.com", "password");
 ```
 
 ### Query
-To Query an object, you must supply the type and the query. It will return a QueryResult objetc.
+To Query an object, you must supply the type and the query. It will return a QueryResult object.
 
 ```csharp
 QueryResult results = Query<T>(string query);
@@ -60,89 +60,155 @@ Connecting to the portal is very simple. In order to authenticate, you provide t
 
 ```csharp
 
-REST api = new REST(@"https://example.magentrix.com", @"username@example.com", "password");
+REST api = new REST(@"https://yourcompany.magentrix.com");
 
-if(api.Login(true).Success)
+var loginResult = api.Login(@"username@yourcompany.com", "password");
+
+
+if(loginResult.IsSuccess)
 {
-  // perform your desired actions here  
+  // perform your desired actions here, such as querying users, creating accounts, editing contacts, etc  
 }
 
 ```
 
-### Performing actions on Account
+### Performing actions on User
 
-In order to query a list of Accounts, you must create an Account object with the necessary information you need
+In order to query a list of Users, you must create a User object with the necessary information you need
 
 ```csharp
-
-public class Account
+public class User
 {
   public string Id { get; set; }
+  public string Firstname { get; set; }
+  public string Lastname { get; set; }
   public string Name { get; set; }
-  public DateTime? CreatedOn { get; set; }
+  public string Username { get; set; }
+  public string Email { get; set; }
+  public bool? IsActive { get; set; }
+  public DateTime? LastLoginDate { get; set; }
 }
-
 ```
 
-### Querying a list of Accounts
+### Querying a list of Users
 
-In order to actually query the list of Accounts, you must do the following
+In order to query a list of active Users, you must do the following:
 
 ```csharp
+QueryResult<User> users = api.Query<User>("FROM User WHERE IsActive = true");
 
-QueryResult<Account> accounts = api.Query<Account>("FROM Account WHERE CreatedOn < DateTime.Now.Date");
-
-if(accounts.Count > 0)
+if(users.Count > 0)
 {
   // perform logic
 }
-
 ```
 
-### Create an Account
-
-In order to create an Account, you must do the following
+Passing a query to the api uses the following format:
 
 ```csharp
-
-SaveResult result = api.Create<Account>(new Account { Name = "Test Account",  });
-
-
+"FROM [entityname] WHERE [conditions] {ORDER BY [fieldname] ASC|DESC}{SELECT [field1, field2,...}"
 ```
 
-### Editing an Account
+The ORDER BY and SELECT values are optional. For example, all the following queries are valid:
+```csharp
+"FROM User WHERE IsActive = true"
+
+"FROM User WHERE IsActive = true ORDER BY Name ASC"
+
+"FROM User WHERE IsActive = true SELECT Id, Name, Email"
+
+"FROM User WHERE IsActive = true ORDER BY Email DESC SELECT Id, Name, Email"
+```
+### Create a User
+
+In order to create a User, you must do the following:
 
 ```csharp
+SaveResult result = api.Create<User>(new User { Firstname = "Test", Lastname = "Testerson" });
+```
 
-QueryResult<Account> accounts = api.Query<Account>("FROM Account WHERE CreatedOn < DateTime.Now.Date");
+### Editing a User
 
-if(accounts.Count > 0)
+In order to edit a user, you must do the following:
+
+```csharp
+string name = "Test Testerson";
+
+QueryResult<User> users = api.Query<User>("FROM User WHERE Name = " + name);
+
+if(users.Count > 0)
 {
-  foreach (Account account in account)
-  {
-    // change the account name
-    account.Name = account.Name + " modified";
-    
-    // update the account
-    SaveResult result = api.Update<Account>(account);
-  }
-}
+	// change the user's last name
+	User user = users[0];
+	user.Lastname = user.Lastname + " modified";
 
+	// update the user
+	SaveResult result = api.Update<User>(user);
+
+}
 ```
 
-### Deleting an Account
+### Deleting a User
+
+In order to delete a user, you must do the following:
 
 ```csharp
+string name = "Test Testerson";
 
-QueryResult<Account> accounts = api.Query<Account>("FROM Account WHERE CreatedOn < DateTime.Now.Date");
+QueryResult<User> users = api.Query<User>("FROM User WHERE Name = " + name);
 
-if(accounts.Count > 0)
+if(users.Count > 0)
 {
-  foreach (Account account in account)
-  {
-    // delete the account and make it permanent
-    DeleteResult result = api.Delete(account.Id, true);
-  }
-}
+	User user = users[0];
+	
+	// delete the user and make it permanent
+	DeleteResult result = api.Delete(user.Id, true);	
 
+}
+```
+
+### Bringing it all together
+
+We will create create a connection, create a user, edit the user, and then delete the user
+
+```csharp
+REST api = new REST(@"https://yourcompany.magentrix.com");
+
+var loginResult = api.Login(@"username@yourcompany.com", "password");
+
+
+if(loginResult.IsSuccess)
+{
+	User user = new User();
+	user.Firstname = "Test";
+	user.Lastname = "Macpherson";
+	user.Email = "test.macpherson@yourcompany.com";
+	
+	SaveResult saveResult = api.Create<User>(user);
+	
+	User loadedUser;
+	string email = "test.macpherson@yourcompany.com";
+	
+	
+	QueryResult<User> users = api.Query<User>("FROM User WHERE Email = " + email);
+	
+	if(users.Count > 0)
+	{
+		loadedUser = users[0];		
+		loadedUser.Firstname = "Jim";
+		
+		SaveResult updateResult = api.Update<User>(user);
+	}
+	
+	string firstName = "Jim";
+	
+	QueryResult<User> toBeDeleted = api.Query<User>("FROM User WHERE Firstname = " + firstName + " SELECT Id");
+	
+	if(toBeDeleted.Count > 0)
+	{
+		User u = toBeDeleted[0];
+		
+		DeleteResult deleteResult = api.Delete(u.Id, true);
+	}	
+}
 ```
