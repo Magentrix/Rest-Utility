@@ -1,13 +1,13 @@
 Rest-Utility
 ============
 
-## C# Wrapper for Accessing a Magentrix Portal
+## C# Wrapper for Accessing the Magentrix Platform
 
-This C# wrapper is used for accessing a Magentrix Portal from an external source. With it you can query, insert, update, and delete objects from the portal. 
+This C# wrapper is used for accessing Magentrix platform APIs. With it you can query, insert, update, and delete objects from the portal. 
 
-The RESTUtility class contains everything you need to access the Magentrix Portal. 
+The RESTUtility class contains everything you need to access the Magentrix platform. 
 
-The sample.cs (along with the User.cs) is an example that shows you to successfully connect with the Magentrix Portal.
+The sample.cs (along with the User.cs) is an example that shows you to successfully connect with the Magentrix platform.
 
 ## Overview
 
@@ -25,28 +25,37 @@ var loginResult = api.Login(@"username@example.com", "password");
 ```
 
 ### Query
-To Query an object, you must supply the type and the query. It will return a QueryResult object.
+To Query an Entity, you must supply the type and the query. It will return a QueryResult object.
 
 ```csharp
 QueryResult results = Query<T>(string query);
 ```
 
 ### Delete
-When deleting an object, you must provide the id of the object you want to delete and a boolean to signify if this delete should be permanent. Deleting will return a DeleteResult object.
+
+To delete a record from the Magentrix platform, use this method. 
+
+When deleting an Entity, you must provide the record id of the Entity you want to delete and a boolean to signify if this delete should be permanent. Deleting will return a DeleteResult object.
 
 ```csharp
 DeleteResult result = Delete(string id, bool permanent);
 ```
 
 ### Create
-When creating an object, you must supply the type. It returns a SaveResult object
+
+To create a record on the Magentrix platform, use this method. 
+
+When creating an Entity, you must supply the type. It returns a SaveResult object
 
 ```csharp
 SaveResult result = Create<T>(T model); // T is the model type
 ```
 
 ### Update
-When updating a model, you must supply the model type. It will return a SaveResult object
+
+To update a record on the Magentrix platform, use this method. 
+
+When updating a Entity, you must supply the Entity type. It will return a SaveResult object
 
 ```csharp
 SaveResult result = Update<T>(T model);
@@ -54,27 +63,25 @@ SaveResult result = Update<T>(T model);
 
 # Examples
 
-### Connecting to a Magentrix Portal
+### Authenticating with your Magentrix organization
 
-Connecting to the portal is very simple. In order to authenticate, you provide the end destination, the username, and the password. Once the Login method returns true, you are able to perform actions. 
+Authenticating with the platform is very simple. In order to authenticate, you provide the organization URL, the username, and the password. you can check the Login method's result to see if the authentication was successful or not. 
 
 ```csharp
-
 REST api = new REST(@"https://yourcompany.magentrix.com");
 
 var loginResult = api.Login(@"username@yourcompany.com", "password");
 
-
 if(loginResult.IsSuccess)
 {
-  // perform your desired actions here, such as querying users, creating accounts, editing contacts, etc  
+  // perform your desired actions here, such as querying users, creating accounts, editing contacts, etc.  
 }
 
 ```
 
-### Performing actions on User
+### Performing Actions on User
 
-In order to query a list of Users, you must create a User object with the necessary information you need
+In order to query a list of Users, you must create define a User class with the necessary fields you want to retrieve
 
 ```csharp
 public class User
@@ -106,10 +113,10 @@ if(users.Count > 0)
 Passing a query to the api uses the following format:
 
 ```csharp
-"FROM [entityname] WHERE [conditions] {ORDER BY [fieldname] ASC|DESC}{SELECT [field1, field2,...}"
+"FROM [entityname] WHERE [conditions] {ORDER BY [fieldname] ASC|DESC}{SELECT [field1], [field2],...}"
 ```
 
-The ORDER BY and SELECT values are optional. For example, all the following queries are valid:
+The ORDER BY and SELECT clauses are optional. The following examples demonstrate various ways you are able to construct a query string:
 ```csharp
 "FROM User WHERE IsActive = true"
 
@@ -148,34 +155,33 @@ if(users.Count > 0)
 }
 ```
 
-### Deleting a User
+### Deleting a Contact
 
 In order to delete a user, you must do the following:
 
 ```csharp
 string name = "Test Testerson";
 
-QueryResult<User> users = api.Query<User>("FROM User WHERE Name = " + name);
+QueryResult<Contact> contacts = api.Query<Contact>("FROM User WHERE Name = " + name);
 
-if(users.Count > 0)
+if(contacts.Count > 0)
 {
-	User user = users[0];
+	Contact contact = contacts[0];
 	
-	// delete the user and make it permanent
-	DeleteResult result = api.Delete(user.Id, true);	
+	// delete the contact
+	DeleteResult result = api.Delete(contact.Id);	
 
 }
 ```
 
 ### Bringing it all together
 
-We will create create a connection, create a user, edit the user, and then delete the user
+We will create create a connection, create a user, and edit the user
 
 ```csharp
 REST api = new REST(@"https://yourcompany.magentrix.com");
 
 var loginResult = api.Login(@"username@yourcompany.com", "password");
-
 
 if(loginResult.IsSuccess)
 {
@@ -188,27 +194,14 @@ if(loginResult.IsSuccess)
 	
 	User loadedUser;
 	string email = "test.macpherson@yourcompany.com";
-	
-	
+		
 	QueryResult<User> users = api.Query<User>("FROM User WHERE Email = " + email);
 	
 	if(users.Count > 0)
 	{
 		loadedUser = users[0];		
-		loadedUser.Firstname = "Jim";
-		
+		loadedUser.Firstname = "Jim";		
 		SaveResult updateResult = api.Update<User>(user);
 	}
-	
-	string firstName = "Jim";
-	
-	QueryResult<User> toBeDeleted = api.Query<User>("FROM User WHERE Firstname = " + firstName + " SELECT Id");
-	
-	if(toBeDeleted.Count > 0)
-	{
-		User u = toBeDeleted[0];
-		
-		DeleteResult deleteResult = api.Delete(u.Id, true);
-	}	
 }
 ```
