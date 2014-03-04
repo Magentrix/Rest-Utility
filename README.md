@@ -162,7 +162,7 @@ In order to delete a user, you must do the following:
 ```csharp
 string name = "Test Testerson";
 
-QueryResult<Contact> contacts = api.Query<Contact>("FROM User WHERE Name = " + name);
+QueryResult<Contact> contacts = api.Query<Contact>("FROM Contact WHERE Name = " + name);
 
 if(contacts.Count > 0)
 {
